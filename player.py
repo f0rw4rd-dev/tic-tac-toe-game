@@ -6,3 +6,4 @@ class Player(BaseModel):
     victories: int = 0
     defeats: int = 0
     draws: int = 0
+    status: int = 0
