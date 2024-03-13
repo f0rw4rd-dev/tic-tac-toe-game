@@ -45,6 +45,8 @@ def create_game(username: str):
         player = Player(username=username, game_id=game_id, status=1)
         players[username] = player
 
+    players[username].last_request_time = datetime.now()
+
     side = random.choice(['X', 'O'])
     games[game_id] = Game(id=game_id, sides={side: player}, turn=player, players={username: player})
 
@@ -73,7 +75,9 @@ def join_game(game_id: str, username: str):
         player = Player(username=username, game_id=game_id, status=1)
         players[username] = player
 
-    side = 'X' if game.sides['X'] is None else 'O'
+    players[username].last_request_time = datetime.now()
+
+    side = 'X' if game.sides.get('X') is None else 'O'
 
     game.sides[side] = player
     game.players[username] = player
@@ -97,6 +101,8 @@ def make_move(game_id: str, username: str, x: int, y: int):
     if not player:
         raise HTTPException(status_code=400, detail='Игрок не присоединен к данной игре')
 
+    players[username].last_request_time = datetime.now()
+
     if len(game.players) < 2:
         raise HTTPException(status_code=400, detail='Ожидание второго игрока')
 
@@ -119,8 +125,8 @@ def make_move(game_id: str, username: str, x: int, y: int):
     if game.status == 2:
         raise HTTPException(status_code=400, detail='Игра уже окончена')
 
-    game.board[x][y] = 'X' if player == game.sides['X'] else 'O'
-    game.turn = game.sides['O'] if player == game.sides['X'] else game.sides['X']
+    game.board[x][y] = 'X' if player == game.sides.get('X') else 'O'
+    game.turn = game.sides['O'] if player == game.sides.get('X') else game.sides.get('X')
 
     winner = check_winner(game.board)
 
@@ -153,8 +159,12 @@ def get_board(game_id: str, username: str):
     if not game:
         raise HTTPException(status_code=404, detail='Игра не найдена')
 
-    if username not in game.players:
+    player = game.players.get(username)
+
+    if not player:
         raise HTTPException(status_code=400, detail='Игрок не присоединен к данной игре')
+
+    players[username].last_request_time = datetime.now()
 
     board = {}
     for i in range(3):
@@ -162,8 +172,8 @@ def get_board(game_id: str, username: str):
             board[f'{3 * i + j}'] = game.board[i][j]
 
     board.update({
-        'turn': 'X' if game.sides['X'] == game.turn else 'O',
-        'side': 'X' if game.sides['X'] is not None and game.sides['X'].username == username else 'O',
+        'turn': 'X' if game.sides.get('X') == game.turn else 'O',
+        'side': 'X' if game.sides.get('X') is not None and game.sides.get('X').username == username else 'O',
         'victories.X': game.victories['X'],
         'victories.O': game.victories['O'],
         'draws': game.draws,
@@ -184,6 +194,8 @@ def restart_game(game_id: str, username: str):
 
     if not player:
         raise HTTPException(status_code=400, detail='Игрок не присоединен к данной игре')
+
+    players[username].last_request_time = datetime.now()
 
     if game.status != 2:
         raise HTTPException(status_code=400, detail='Игра еще не окончена')
@@ -208,7 +220,7 @@ def restart_game(game_id: str, username: str):
         side = random.choice(['X', 'O'])
         game.sides[side] = player
     elif k_restart == 1:
-        side = 'X' if game.sides['X'] is None else 'O'
+        side = 'X' if game.sides.get('X') is None else 'O'
     else:
         raise HTTPException(status_code=400, detail='Игра не требует перезапуска')
 
@@ -216,10 +228,12 @@ def restart_game(game_id: str, username: str):
 
     return {'side': side}
 
-# @app.on_event('startup')
-# @repeat_every(seconds=30)
-# def cleanup_inactive_games():
-#     now = datetime.now()
-#     for game_id, game in list(games.items()):
-#         if now - game.last_move_time > timedelta(seconds=30):
-#             del games[game_id]
+
+@app.on_event('startup')
+@repeat_every(seconds=30)
+def cleanup_inactive_games():
+    now = datetime.now()
+    for username, player in players.items():
+        if now - player.last_request_time > timedelta(seconds=30):
+            player.status = 0
+            del games[player.game_id]
