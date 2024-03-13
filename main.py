@@ -12,6 +12,8 @@ app = FastAPI()
 games = {}
 players = {}
 
+last_game_id = 0
+
 
 def check_winner(board):
     winning_positions = [
@@ -31,7 +33,9 @@ def check_winner(board):
 
 @app.post('/games/create')
 def create_game(username: str):
-    game_id = str(uuid.uuid4())
+    global last_game_id
+    game_id = str(last_game_id)
+    last_game_id += 1
 
     if username in players:
         player = players[username]
@@ -62,6 +66,9 @@ def join_game(game_id: str, username: str):
 
     if len(game.players) == 2:
         raise HTTPException(status_code=400, detail='К игре уже подключено 2 человека')
+
+    if username in game.players:
+        raise HTTPException(status_code=400, detail='Игрок уже присоединен к данной игре')
 
     if username in players:
         player = players[username]
@@ -102,6 +109,7 @@ def make_move(game_id: str, username: str, x: int, y: int):
         raise HTTPException(status_code=400, detail='Игрок не присоединен к данной игре')
 
     players[username].last_request_time = datetime.now()
+    players[username].last_move_time = datetime.now()
 
     if len(game.players) < 2:
         raise HTTPException(status_code=400, detail='Ожидание второго игрока')
@@ -229,11 +237,27 @@ def restart_game(game_id: str, username: str):
     return {'side': side}
 
 
+@app.get('/games/{game_id}/exist')
+def game_exist(game_id):
+    game = games.get(game_id)
+
+    if game:
+        now = datetime.now()
+        for username, player in game.players.items():
+            if now - player.last_request_time > timedelta(seconds=30) or now - player.last_move_time > timedelta(seconds=30):
+                player.status = 0
+                del game
+                return {'exist': False}
+
+    return {'exist': games.get(game_id) is not None}
+
+
 @app.on_event('startup')
 @repeat_every(seconds=30)
 def cleanup_inactive_games():
+    print('cleanup_inactive_games')
     now = datetime.now()
     for username, player in players.items():
-        if now - player.last_request_time > timedelta(seconds=30):
+        if now - player.last_request_time > timedelta(seconds=30) or now - player.last_move_time > timedelta(seconds=30):
             player.status = 0
             del games[player.game_id]

@@ -7,6 +7,7 @@ class Player(BaseModel):
     username: str
     status: int = 0  # 0 - игрок не в игре, 1 - игрок в игре, -1 - игрок перезагружается
     last_request_time: datetime = datetime.now()
+    last_move_time: datetime = datetime.now()
     game_id: Optional[str] = None
 
     victories: int = 0
