@@ -124,16 +124,6 @@ def make_move(game_id: str, username: str, x: int, y: int):
     if game.turn != player:
         raise HTTPException(status_code=400, detail='Сейчас ход другого игрока')
 
-    k_restart = 0
-    for p_username, p_player in game.players.items():
-        if p_player.status == -1:
-            k_restart += 1
-
-    if k_restart > 0:
-        raise HTTPException(status_code=400, detail='Ещё не все игроки перезагружены')
-    elif k_restart == 0:
-        game.status = 1
-
     if game.status == 2:
         raise HTTPException(status_code=400, detail='Игра уже окончена')
 
@@ -149,6 +139,7 @@ def make_move(game_id: str, username: str, x: int, y: int):
 
         for p_username, p_player in game.players.items():
             p_player.status = -1
+
     elif all([cell != '' for row in game.board for cell in row]):  # Ничья
         game.status = 2
         game.draws += 1
@@ -233,6 +224,7 @@ def restart_game(game_id: str, username: str):
         game.sides[side] = player
     elif k_restart == 1:
         side = 'X' if game.sides.get('X') is None else 'O'
+        game.status = 1
     else:
         raise HTTPException(status_code=400, detail='Игра не требует перезапуска')
 
