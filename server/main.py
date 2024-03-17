@@ -35,7 +35,6 @@ def check_winner(board):
 async def create_game(username: str):
     global last_game_id
     game_id = str(last_game_id)
-    last_game_id += 1
 
     if username in players:
         player = players[username]
@@ -53,6 +52,8 @@ async def create_game(username: str):
 
     side = random.choice(['X', 'O'])
     games[game_id] = Game(id=game_id, sides={side: player}, turn=player, players={username: player})
+
+    last_game_id += 1
 
     return {'game_id': game_id, 'side': side}
 
@@ -217,20 +218,13 @@ async def restart_game(game_id: str, username: str):
     game.board = [['', '', ''], ['', '', ''], ['', '', '']]
 
     if k_restart == 2:
-        game.sides = {'X': None, 'O': None}
         game.turn = player
-
-        side = random.choice(['X', 'O'])
-        game.sides[side] = player
     elif k_restart == 1:
-        side = 'X' if game.sides.get('X') is None else 'O'
         game.status = 1
     else:
         raise HTTPException(status_code=400, detail='Игра не требует перезапуска')
 
-    game.sides[side] = player
-
-    return {'side': side}
+    return {'side': 'X' if game.sides.get('X') == player else 'O'}
 
 
 @app.get('/cleanup')
