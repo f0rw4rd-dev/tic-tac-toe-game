@@ -1,10 +1,8 @@
 from fastapi import FastAPI, HTTPException
-from fastapi_utils.tasks import repeat_every
 from player import Player
 from game import Game
 from datetime import datetime, timedelta
 
-import uuid
 import random
 
 app = FastAPI()
