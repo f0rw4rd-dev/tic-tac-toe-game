@@ -32,7 +32,7 @@ def check_winner(board):
 
 
 @app.post('/games/create')
-def create_game(username: str):
+async def create_game(username: str):
     global last_game_id
     game_id = str(last_game_id)
     last_game_id += 1
@@ -58,7 +58,7 @@ def create_game(username: str):
 
 
 @app.post('/games/join')
-def join_game(game_id: str, username: str):
+async def join_game(game_id: str, username: str):
     game_id = str(game_id)
     game = games.get(game_id)
 
@@ -98,7 +98,7 @@ def join_game(game_id: str, username: str):
 
 
 @app.post('/games/move')
-def make_move(game_id: str, username: str, x: int, y: int):
+async def make_move(game_id: str, username: str, x: int, y: int):
     game = games.get(game_id)
 
     if not game:
@@ -156,7 +156,7 @@ def make_move(game_id: str, username: str, x: int, y: int):
 
 
 @app.get('/games/{game_id}/{username}/board')
-def get_board(game_id: str, username: str):
+async def get_board(game_id: str, username: str):
     game = games.get(game_id)
 
     if not game:
@@ -187,7 +187,7 @@ def get_board(game_id: str, username: str):
 
 
 @app.post('/games/restart')
-def restart_game(game_id: str, username: str):
+async def restart_game(game_id: str, username: str):
     game = games.get(game_id)
 
     if not game:
@@ -234,7 +234,7 @@ def restart_game(game_id: str, username: str):
 
 
 @app.get('/cleanup')
-def cleanup():
+async def cleanup():
     now = datetime.now()
     for username, player in players.items():
         if (now - player.last_request_time > timedelta(seconds=30)
