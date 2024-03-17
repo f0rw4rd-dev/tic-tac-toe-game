@@ -237,8 +237,6 @@ def restart_game(game_id: str, username: str):
 def cleanup():
     now = datetime.now()
     for username, player in players.items():
-        print(f'{player.username} | {player.status} | {player.game_id} | {player.last_request_time} | {player.last_move_time}')
-
         if (now - player.last_request_time > timedelta(seconds=30)
                 or now - player.last_move_time > timedelta(seconds=30) and player.status == 1 and player.game_id is not None and games.get(player.game_id) is not None and games[player.game_id].status == 1):
             temp_game_id = player.game_id
