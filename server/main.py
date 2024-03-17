@@ -59,6 +59,7 @@ def create_game(username: str):
 
 @app.post('/games/join')
 def join_game(game_id: str, username: str):
+    game_id = str(game_id)
     game = games.get(game_id)
 
     if not game:
@@ -89,6 +90,9 @@ def join_game(game_id: str, username: str):
     game.sides[side] = player
     game.players[username] = player
     game.status = 1
+
+    for p_username, p_player in game.players.items():
+        p_player.last_move_time = datetime.now()
 
     return {'side': side}
 
@@ -155,7 +159,7 @@ def make_move(game_id: str, username: str, x: int, y: int):
         game.status = 1
 
         for p_username, p_player in game.players.items():
-            p_player.status = 0
+            p_player.status = 1
 
     return {'status': game.status}
 
@@ -237,26 +241,19 @@ def restart_game(game_id: str, username: str):
     return {'side': side}
 
 
-@app.get('/games/{game_id}/exist')
-def game_exist(game_id):
-    game = games.get(game_id)
-
-    if game:
-        now = datetime.now()
-        for username, player in game.players.items():
-            if now - player.last_request_time > timedelta(seconds=30) or now - player.last_move_time > timedelta(seconds=30):
-                player.status = 0
-                del game
-                return {'exist': False}
-
-    return {'exist': games.get(game_id) is not None}
-
-
-@app.on_event('startup')
-@repeat_every(seconds=30)
-def cleanup_inactive_games():
+@app.get('/cleanup')
+def cleanup():
     now = datetime.now()
     for username, player in players.items():
-        if now - player.last_request_time > timedelta(seconds=30) or now - player.last_move_time > timedelta(seconds=30):
-            player.status = 0
-            del games[player.game_id]
+        print(f'{player.username} | {player.status} | {player.game_id} | {player.last_request_time} | {player.last_move_time}')
+
+        if (now - player.last_request_time > timedelta(seconds=30)
+                or now - player.last_move_time > timedelta(seconds=30) and player.status == 1 and player.game_id is not None and games.get(player.game_id) is not None and games[player.game_id].status == 1):
+            temp_game_id = player.game_id
+
+            if temp_game_id is not None and temp_game_id in games:
+                for p_username, p_player in games[temp_game_id].players.items():
+                    p_player.status = 0
+                    p_player.game_id = None
+
+                del games[temp_game_id]
